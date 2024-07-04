@@ -58,6 +58,10 @@ endif
 # Export variables so that they can be set here without needing to also set them in sub-make files.
 export ENABLE_ASAN ASAN_COMMAND
 
+export PATH := $(shell echo $$VIRTUAL_ENV)/bin:$(PATH)
+export PYTHONPATH := $(shell echo $$VIRTUAL_ENV):$(shell $(PYTHON) -c 'import site; print(":".join(site.getsitepackages()))')
+
+
 .PHONY: help
 help:
 	@echo "Please use \`make <target>' where <target> is one of"
