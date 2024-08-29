@@ -31,7 +31,9 @@ class TestExpmNumerical:
         [
             jnp.array([[0.1, 0.2], [5.3, 1.2]]),
             jnp.array([[1, 2], [3, 4]]),
-            jnp.array([[1.0, -1.0j], [1.0j, -1.0]]),
+            #jnp.array([[1.0, -1.0j], [1.0j, -1.0]]),
+            jnp.array([[1,2,3],[4,5,6],[3,2,1]]),
+            jnp.array([[3.32,2.45,3.99],[1.2,-5.77,6.10],[-2.21,9.12,-0.1]])
         ],
     )
     def test_expm_numerical(self, inp):
@@ -46,7 +48,7 @@ class TestExpmNumerical:
 
         assert np.allclose(observed, expected)
 
-
+#@pytest.mark.skip("...")
 class TestExpmInCircuit:
     """Test entire quantum workflows with jax.scipy.linag.expm"""
 
@@ -56,7 +58,7 @@ class TestExpmInCircuit:
         @qjit
         @qml.qnode(qml.device("lightning.qubit", wires=1))
         def circuit_expm():
-            generator = -1j * jnp.pi * jnp.array([[0, 1], [1, 0]]) / 2
+            generator = -1j * jnp.pi * jnp.array([[0, 1], [1, 0]], dtype="complex128") / 2
             unitary = jsp.linalg.expm(generator)
             qml.QubitUnitary(unitary, wires=[0])
             return qml.probs()

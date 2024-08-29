@@ -22,10 +22,18 @@
 #include <string>
 #include <vector>
 
+//#include <complex.h>
+//#define std_dComplex   double _Complex
+
 namespace {
 
 typedef int lapack_int;
-typedef std::complex<double> dComplex;
+//typedef std::complex<double> dComplex;
+typedef std::complex<double> std_dComplex;
+
+typedef void dComplex;
+
+std_dComplex lapack_make_complex_double( double re, double im );
 
 static char GesddJobz(bool job_opt_compute_uv, bool job_opt_full_matrices)
 {
@@ -49,24 +57,41 @@ struct EncodedMemref {
     int8_t dtype;
 };
 
+#define LAPACK_ROW_MAJOR               101
+#define LAPACK_COL_MAJOR               102
+
+typedef enum {CblasRowMajor=101, CblasColMajor=102} CBLAS_LAYOUT;
+typedef enum {CblasNoTrans=111, CblasTrans=112, CblasConjTrans=113} CBLAS_TRANSPOSE;
+typedef enum {CblasUpper=121, CblasLower=122} CBLAS_UPLO;
+typedef enum {CblasNonUnit=131, CblasUnit=132} CBLAS_DIAG;
+typedef enum {CblasLeft=141, CblasRight=142} CBLAS_SIDE;
+
+/*
+void LAPACKE_dgesdd(int matrix_layout, char jobz, lapack_int m, lapack_int n, double *a, lapack_int lda, double *s,
+             double *u, lapack_int ldu, double *vt, lapack_int ldvt);
+             //, double *work, lapack_int *lwork, lapack_int *iwork, lapack_int *info);
+*/
+
 void dgesdd_(char *jobz, lapack_int *m, lapack_int *n, double *a, lapack_int *lda, double *s,
              double *u, lapack_int *ldu, double *vt, lapack_int *ldvt, double *work,
              lapack_int *lwork, lapack_int *iwork, lapack_int *info);
 
-void dsyevd_(char *jobz, char *uplo, lapack_int *n, double *a, int *lda, double *w, double *work,
-             lapack_int *lwork, lapack_int *iwork, lapack_int *liwork, lapack_int *info);
+void LAPACKE_dsyevd(int matrix_layout, char *jobz, char *uplo, lapack_int *n, double *a, int *lda, double *w);
+             //, double *work, lapack_int *lwork, lapack_int *iwork, lapack_int *liwork, lapack_int *info);
 
-void dtrsm_(char *side, char *uplo, char *transa, char *diag, lapack_int *m, lapack_int *n,
-            double *alpha, double *a, lapack_int *lda, double *b, lapack_int *ldb);
+void cblas_dtrsm(CBLAS_LAYOUT matrix_layout, CBLAS_SIDE side, CBLAS_UPLO uplo, CBLAS_TRANSPOSE transa, CBLAS_DIAG diag, lapack_int m, lapack_int n,
+            double alpha, double *a, lapack_int lda, double *b, lapack_int ldb);
 
-void ztrsm_(char *side, char *uplo, char *transa, char *diag, lapack_int *m, lapack_int *n,
-            dComplex *alpha, dComplex *a, lapack_int *lda, dComplex *b, lapack_int *ldb);
+void cblas_ztrsm(CBLAS_LAYOUT matrix_layout, CBLAS_SIDE side, CBLAS_UPLO uplo, CBLAS_TRANSPOSE transa, CBLAS_DIAG diag, lapack_int m, lapack_int n,
+            const dComplex *alpha, const dComplex *a, lapack_int lda, dComplex *b, lapack_int ldb);
 
-void dgetrf_(lapack_int *m, lapack_int *n, double *a, lapack_int *lda, lapack_int *ipiv,
-             lapack_int *info);
+void LAPACKE_dgetrf(int matrix_layout, lapack_int m, lapack_int n, double *a, lapack_int lda, lapack_int *ipiv);
+             //lapack_int *info);
 
-void zgetrf_(lapack_int *m, lapack_int *n, dComplex *a, lapack_int *lda, lapack_int *ipiv,
-             lapack_int *info);
+//auto lapack_make_complex_double(double re, double im);
+
+void LAPACKE_zgetrf(int matrix_layout, lapack_int m, lapack_int n, std_dComplex *a, lapack_int lda, lapack_int *ipiv);
+             //lapack_int *info);
 
 // Wrapper to call various blas core routine. Currently includes:
 // - the SVD solver `dgesdd_`
@@ -124,7 +149,8 @@ void lapack_dgesdd(void **dataEncoded, void **resultsEncoded)
     int ldvt = job_opt_full_matrices ? n : std::min(m, n);
 
     for (int i = 0; i < b; ++i) {
-        dgesdd_(&jobz, &m, &n, a_out, &lda, s, u, &ldu, vt, &ldvt, work, &lwork, iwork, info);
+        //LAPACKE_dgesdd(LAPACK_ROW_MAJOR, jobz, m, n, a_out, lda, s, u, ldu, vt, ldvt);//, work, &lwork, iwork, info);
+        dgesdd_(&jobz, &m, &n, a_out, &lda, s, u, &ldu, vt, &ldvt, work, &lwork, iwork, info);        
         a_out += static_cast<int64_t>(m) * n;
         s += std::min(m, n);
         u += static_cast<int64_t>(m) * tdu;
@@ -171,7 +197,7 @@ void lapack_dsyevd(void **dataEncoded, void **resultsEncoded)
         std::min<int64_t>(std::numeric_limits<lapack_int>::max(), 1 + 6 * n + 2 * n * n);
     lapack_int liwork = std::min<int64_t>(std::numeric_limits<lapack_int>::max(), 3 + 5 * n);
     for (int i = 0; i < b; ++i) {
-        dsyevd_(&jobz, &uplo, &n, a_out, &n, w_out, work, &lwork, iwork, &liwork, info_out);
+        LAPACKE_dsyevd(LAPACK_ROW_MAJOR, &jobz, &uplo, &n, a_out, &n, w_out);//, work, &lwork, iwork, &liwork, info_out);
         a_out += static_cast<int64_t>(n) * n;
         w_out += n;
         ++info_out;
@@ -210,7 +236,14 @@ void blas_dtrsm(void **dataEncoded, void **resultsEncoded)
                     static_cast<int64_t>(batch) * static_cast<int64_t>(m) *
                         static_cast<int64_t>(n) * sizeof(double));
     }
-
+/*
+typedef enum {CblasRowMajor=101, CblasColMajor=102} CBLAS_LAYOUT;
+typedef enum {CblasNoTrans=111, CblasTrans=112, CblasConjTrans=113} CBLAS_TRANSPOSE;
+typedef enum {CblasUpper=121, CblasLower=122} CBLAS_UPLO;
+typedef enum {CblasNonUnit=131, CblasUnit=132} CBLAS_DIAG;
+typedef enum {CblasLeft=141, CblasRight=142} CBLAS_SIDE;
+*/
+    /*
     char cside = left_side ? 'L' : 'R';
     char cuplo = lower ? 'L' : 'U';
     char ctransa = 'N';
@@ -221,6 +254,18 @@ void blas_dtrsm(void **dataEncoded, void **resultsEncoded)
         ctransa = 'C';
     }
     char cdiag = diag ? 'U' : 'N';
+    */
+    CBLAS_SIDE cside = left_side ? CblasLeft : CblasRight;
+    CBLAS_UPLO cuplo = lower ? CblasLower : CblasUpper;
+    CBLAS_TRANSPOSE ctransa = CblasNoTrans;
+    if (trans_a == 1) {
+        ctransa = CblasTrans;
+    }
+    else if (trans_a == 2) {
+        ctransa = CblasConjTrans;
+    }
+    CBLAS_DIAG cdiag = diag ? CblasUnit : CblasNonUnit;
+
     int lda = left_side ? m : n;
     int ldb = m;
 
@@ -228,7 +273,8 @@ void blas_dtrsm(void **dataEncoded, void **resultsEncoded)
     int64_t a_plus = static_cast<int64_t>(lda) * static_cast<int64_t>(lda);
 
     for (int i = 0; i < batch; ++i) {
-        dtrsm_(&cside, &cuplo, &ctransa, &cdiag, &m, &n, alpha, a, &lda, x, &ldb);
+        //cblas_dtrsm(CblasRowMajor, &cside, &cuplo, &ctransa, &cdiag, &m, &n, alpha, a, &lda, x, &ldb);
+        cblas_dtrsm(CblasRowMajor, cside, cuplo, ctransa, cdiag, m, n, *alpha, a, lda, x, ldb);
         x += x_plus;
         a += a_plus;
     }
@@ -256,8 +302,8 @@ void blas_ztrsm(void **dataEncoded, void **resultsEncoded)
     int m = *reinterpret_cast<int32_t *>(data[4]);
     int n = *reinterpret_cast<int32_t *>(data[5]);
     int batch = *reinterpret_cast<int32_t *>(data[6]);
-    dComplex *alpha = reinterpret_cast<dComplex *>(data[7]);
-    dComplex *a = reinterpret_cast<dComplex *>(data[8]);
+    const dComplex *alpha = reinterpret_cast<dComplex *>(data[7]);
+    const dComplex *a = reinterpret_cast<dComplex *>(data[8]);
     dComplex *b = reinterpret_cast<dComplex *>(data[9]);
 
     dComplex *x = reinterpret_cast<dComplex *>(out[0]);
@@ -267,6 +313,7 @@ void blas_ztrsm(void **dataEncoded, void **resultsEncoded)
                         static_cast<int64_t>(n) * sizeof(dComplex));
     }
 
+/*
     char cside = left_side ? 'L' : 'R';
     char cuplo = lower ? 'L' : 'U';
     char ctransa = 'N';
@@ -277,6 +324,19 @@ void blas_ztrsm(void **dataEncoded, void **resultsEncoded)
         ctransa = 'C';
     }
     char cdiag = diag ? 'U' : 'N';
+*/
+
+    CBLAS_SIDE cside = left_side ? CblasLeft : CblasRight;
+    CBLAS_UPLO cuplo = lower ? CblasLower : CblasUpper;
+    CBLAS_TRANSPOSE ctransa = CblasNoTrans;
+    if (trans_a == 1) {
+        ctransa = CblasTrans;
+    }
+    else if (trans_a == 2) {
+        ctransa = CblasConjTrans;
+    }
+    CBLAS_DIAG cdiag = diag ? CblasUnit : CblasNonUnit;
+
     int lda = left_side ? m : n;
     int ldb = m;
 
@@ -284,7 +344,8 @@ void blas_ztrsm(void **dataEncoded, void **resultsEncoded)
     int64_t a_plus = static_cast<int64_t>(lda) * static_cast<int64_t>(lda);
 
     for (int i = 0; i < batch; ++i) {
-        ztrsm_(&cside, &cuplo, &ctransa, &cdiag, &m, &n, alpha, a, &lda, x, &ldb);
+        //cblas_ztrsm(CblasRowMajor, &cside, &cuplo, &ctransa, &cdiag, &m, &n, alpha, a, &lda, x, &ldb);
+        cblas_ztrsm(CblasRowMajor, cside, cuplo, ctransa, cdiag, m, n, alpha, a, lda, x, ldb);
         x += x_plus;
         a += a_plus;
     }
@@ -319,7 +380,8 @@ void lapack_dgetrf(void **dataEncoded, void **resultsEncoded)
                         sizeof(double));
     }
     for (int i = 0; i < b; ++i) {
-        dgetrf_(&m, &n, a_out, &m, ipiv, info);
+        //LAPACKE_dgetrf(LAPACK_ROW_MAJOR, &m, &n, a_out, &m, ipiv);//, info);
+        LAPACKE_dgetrf(LAPACK_ROW_MAJOR, m, n, a_out, m, ipiv);//, info);
         a_out += static_cast<int64_t>(m) * static_cast<int64_t>(n);
         ipiv += std::min(m, n);
         ++info;
@@ -344,18 +406,19 @@ void lapack_zgetrf(void **dataEncoded, void **resultsEncoded)
     int b = *(reinterpret_cast<int32_t *>(data[0]));
     int m = *(reinterpret_cast<int32_t *>(data[1]));
     int n = *(reinterpret_cast<int32_t *>(data[2]));
-    const dComplex *a_in = reinterpret_cast<dComplex *>(data[3]);
+    const std_dComplex *a_in = reinterpret_cast<std_dComplex *>(data[3]);
 
-    dComplex *a_out = reinterpret_cast<dComplex *>(out[0]);
+    std_dComplex *a_out = reinterpret_cast<std_dComplex *>(out[0]);
     int *ipiv = reinterpret_cast<int *>(out[1]);
     int *info = reinterpret_cast<int *>(out[2]);
     if (a_out != a_in) {
         std::memcpy(a_out, a_in,
                     static_cast<int64_t>(b) * static_cast<int64_t>(m) * static_cast<int64_t>(n) *
-                        sizeof(dComplex));
+                        sizeof(std_dComplex));
     }
     for (int i = 0; i < b; ++i) {
-        zgetrf_(&m, &n, a_out, &m, ipiv, info);
+        //LAPACKE_zgetrf(LAPACK_ROW_MAJOR, &m, &n, a_out, &m, ipiv);//, info);
+        LAPACKE_zgetrf(LAPACK_ROW_MAJOR, m, n, a_out, m, ipiv);//, info);
         a_out += static_cast<int64_t>(m) * static_cast<int64_t>(n);
         ipiv += std::min(m, n);
         ++info;
