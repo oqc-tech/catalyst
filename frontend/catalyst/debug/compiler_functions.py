@@ -104,9 +104,9 @@ def get_compilation_stage(fn, stage):
 
 
 @debug_logger
-def get_compilation_stages_groups(options):
+def get_opts_for_stages(options):
     """Returns a list of tupes. The tuples correspond to the name
-    of the compilation stage and the list of passes within that stage.
+    of the compilation stage and the list of optimization passes within that stage.
     """
     return options.get_stages()
 
