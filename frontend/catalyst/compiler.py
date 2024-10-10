@@ -145,7 +145,18 @@ class CompileOptions:
         """Get effective pipelines"""
         if self.pipelines:
             return self.pipelines
-        return get_stages(self)
+        return self.get_stages()
+
+    def get_stages(self):
+        """Returns all stages in order for compilation"""
+        # Dictionaries in python are ordered
+        stages = {}
+        stages["EnforeRuntimeInvariantsPass"] = get_enforce_runtime_invariants_stage(self)
+        stages["HLOLoweringPass"] = get_hlo_lowering_stage(self)
+        stages["QuantumCompilationPass"] = get_quantum_compilation_stage(self)
+        stages["BufferizationPass"] = get_bufferization_stage(self)
+        stages["MLIRToLLVMDialect"] = get_convert_to_llvm_stage(self)
+        return list(stages.items())
 
 
 @debug_logger
@@ -162,7 +173,7 @@ def run_writing_command(command: List[str], compile_options: Optional[CompileOpt
     subprocess.run(command, check=True)
 
 
-def get_enforce_runtime_invariants_stage(_options: Optional[CompileOptions] = None) -> List[str]:
+def get_enforce_runtime_invariants_stage(_options: CompileOptions) -> List[str]:
     """Returns the list of passes in the enforce runtime invariant stage."""
     enforce_runtime_invariants = [
         # We want the invariant that transforms that generate multiple
@@ -184,7 +195,7 @@ def get_enforce_runtime_invariants_stage(_options: Optional[CompileOptions] = No
     return enforce_runtime_invariants
 
 
-def get_hlo_lowering_stage(_options: Optional[CompileOptions] = None) -> List[str]:
+def get_hlo_lowering_stage(_options: CompileOptions) -> List[str]:
     """Returns the list of passes to lower StableHLO to upstream MLIR dialects."""
     hlo_lowering = [
         "canonicalize",
@@ -206,10 +217,8 @@ def get_hlo_lowering_stage(_options: Optional[CompileOptions] = None) -> List[st
     return hlo_lowering
 
 
-def get_quantum_compilation_stage(options: Optional[CompileOptions] = None) -> List[str]:
+def get_quantum_compilation_stage(options: CompileOptions) -> List[str]:
     """Returns the list of passes that performs quantum transformations"""
-    if options is None:
-        options = CompileOptions()
 
     quantum_compilation = [
         "annotate-function",
@@ -221,7 +230,7 @@ def get_quantum_compilation_stage(options: Optional[CompileOptions] = None) -> L
     return list(filter(partial(is_not, None), quantum_compilation))
 
 
-def get_bufferization_stage(_options: Optional[CompileOptions] = None) -> List[str]:
+def get_bufferization_stage(_options: CompileOptions) -> List[str]:
     """Returns the list of passes that performs bufferization"""
     bufferization = [
         "one-shot-bufferize{dialect-filter=memref}",
@@ -257,10 +266,8 @@ def get_bufferization_stage(_options: Optional[CompileOptions] = None) -> List[s
     return bufferization
 
 
-def get_convert_to_llvm_stage(options: Optional[CompileOptions] = None) -> List[str]:
+def get_convert_to_llvm_stage(options: CompileOptions) -> List[str]:
     """Returns the list of passes that lowers MLIR upstream dialects to LLVM Dialect"""
-    if options is None:
-        options = CompileOptions()
 
     convert_to_llvm = [
         "qnode-to-async-lowering" if options.async_qnodes else None,
@@ -310,18 +317,6 @@ def get_convert_to_llvm_stage(options: Optional[CompileOptions] = None) -> List[
         "register-inactive-callback",
     ]
     return list(filter(partial(is_not, None), convert_to_llvm))
-
-
-def get_stages(options):
-    """Returns all stages in order for compilation"""
-    # Dictionaries in python are ordered
-    stages = {}
-    stages["EnforeRuntimeInvariantsPass"] = get_enforce_runtime_invariants_stage(options)
-    stages["HLOLoweringPass"] = get_hlo_lowering_stage(options)
-    stages["QuantumCompilationPass"] = get_quantum_compilation_stage(options)
-    stages["BufferizationPass"] = get_bufferization_stage(options)
-    stages["MLIRToLLVMDialect"] = get_convert_to_llvm_stage(options)
-    return list(stages.items())
 
 
 class LinkerDriver:

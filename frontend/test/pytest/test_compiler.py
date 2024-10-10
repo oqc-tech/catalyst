@@ -30,7 +30,7 @@ import pennylane as qml
 import pytest
 
 from catalyst import qjit
-from catalyst.compiler import CompileOptions, Compiler, LinkerDriver, get_stages
+from catalyst.compiler import CompileOptions, Compiler, LinkerDriver
 from catalyst.utils.exceptions import CompileError
 from catalyst.utils.filesystem import Directory
 
@@ -212,7 +212,7 @@ class TestCompilerState:
         """Test that after compiling the intermediate files exist."""
 
         options = CompileOptions()
-        pipelines = get_stages(options)
+        pipelines = options.get_stages(options)
 
         @qjit(
             keep_intermediate=True,
