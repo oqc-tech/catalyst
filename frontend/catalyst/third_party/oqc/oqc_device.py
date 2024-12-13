@@ -29,7 +29,7 @@ except ImportError as e:  # pragma: no cover
 
 from catalyst.compiler import get_lib_path
 
-BACKENDS = ["lucy", "toshiko"]
+#BACKENDS = ["lucy", "toshiko"]
 
 
 class OQCDevice(Device):
@@ -47,9 +47,12 @@ class OQCDevice(Device):
         # TODO: Replace with the oqc shared library
         return "oqc", get_lib_path("oqc_runtime", "OQC_LIB_DIR") + "/librtd_oqc.so"
 
-    def __init__(self, wires, backend, shots=1024, **kwargs):
-        self._backend = backend
-        _check_backend(backend=backend)
+#    def __init__(self, wires, backend, shots=1024, **kwargs):
+#        self._backend = backend
+#        _check_backend(backend=backend)
+#        _check_envvar()
+#        super().__init__(wires=wires, shots=shots, **kwargs)
+    def __init__(self, wires, shots=1024, **kwargs):
         _check_envvar()
         super().__init__(wires=wires, shots=shots, **kwargs)
 
@@ -78,16 +81,16 @@ class OQCDevice(Device):
         raise NotImplementedError("The OQC device only supports Catalyst.")
 
 
-def _check_backend(backend):
-    """Helper function to check the backend."""
-    if backend not in BACKENDS:
-        raise ValueError(f"The backend {backend} is not supported. Valid devices are {BACKENDS}")
-
+#def _check_backend(backend):
+#    """Helper function to check the backend."""
+#    if backend not in BACKENDS:
+#        raise ValueError(f"The backend {backend} is not supported. Valid devices are {BACKENDS}")
+#
 
 def _check_envvar():
     """Helper function to check the environment variables are set for authentification."""
     url = os.getenv("OQC_URL")
-    email = os.getenv("OQC_EMAIL")
-    password = os.getenv("OQC_PASSWORD")
-    if not all((url, email, password)):
-        raise ValueError("You must set url, email and password as environment variables.")
+    device = os.getenv("OQC_DEVICE")
+    auth_token = os.getenv("OQC_AUTH_TOKEN")
+    if not all((url, device, auth_token)):
+        raise ValueError("You must set OQC_URL, OQC_DEVICE and OQC_AUTH_TOKEN as environment variables.")
