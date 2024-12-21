@@ -107,17 +107,31 @@ struct OQCRunnerBase {
  */
 struct OQCRunner : public OQCRunnerBase {
 
-    [[nodiscard]] auto Counts(const std::string &circuit, const std::string &device, size_t shots,
-                              size_t num_qubits, const std::string &kwargs = "") const
-        -> std::vector<size_t>
+    [[nodiscard]] auto Counts(const std::string &circuit, 
+                              const std::string &device, 
+                              size_t shots,
+                              size_t num_qubits, 
+                              const std::string &kwargs = "") 
+                  const -> std::vector<size_t>
     {
         DynamicLibraryLoader libLoader(OQC_PY);
 
         using countsImpl_t =
-            std::vector<size_t> (*)(const char *, const char *, size_t, const char *);
+                           void (*)(const char *, 
+                                    const char *, 
+                                    size_t, 
+                                    const char *,
+                                    void *);
         auto countsImpl = libLoader.getSymbol<countsImpl_t>("counts");
+        std::vector<size_t> results;
 
-        return countsImpl(circuit.c_str(), device.c_str(), shots, kwargs.c_str());
+        std::cout << circuit.c_str() << std::endl;
+        countsImpl(circuit.c_str(), 
+                   device.c_str(), 
+                   shots, 
+                   kwargs.c_str(),
+                   &results);
+        return results;
     }
 };
 

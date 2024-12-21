@@ -17,7 +17,9 @@ configure:
 		-DCMAKE_CXX_COMPILER=$(CXX_COMPILER) \
 		-DRUNTIME_BUILD_DIR=$(RT_BUILD_DIR) \
 		-DPYTHON_EXECUTABLE=$(PYTHON) \
-		-Dpybind11_DIR=$(shell $(PYTHON) -c "import pybind11; print(pybind11.get_cmake_dir())")
+		-Dpybind11_DIR=$(shell $(PYTHON) -c "import pybind11; print(pybind11.get_cmake_dir())")\
+                -DCMAKE_C_FLAGS="-g" \
+                -DCMAKE_CXX_FLAGS="-g"
 
 $(OQC_BUILD_DIR)/librtd_oqc.so: configure
 	cmake --build $(OQC_BUILD_DIR) --target rtd_oqc -j$(NPROC)
