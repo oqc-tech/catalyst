@@ -82,8 +82,10 @@ void OQCDevice::NamedOperation(const std::string &name, const std::vector<double
     builder->AddGate(name, params, dev_wires);
 }
 
-void OQCDevice::PartialCounts(DataView<double, 1> &eigvals, DataView<int64_t, 1> &counts,
-                              const std::vector<QubitIdType> &wires, size_t shots)
+void OQCDevice::PartialCounts(DataView<double, 1> &eigvals, 
+                              DataView<int64_t, 1> &counts,
+                              const std::vector<QubitIdType> &wires, 
+                              size_t shots)
 {
     const size_t numQubits = GetNumQubits();
     // Add the measurements on the given wires

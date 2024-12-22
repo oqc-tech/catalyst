@@ -122,15 +122,16 @@ struct OQCRunner : public OQCRunnerBase {
                                     size_t, 
                                     const char *,
                                     void *);
+                                    //std::vector<size_t> *);
         auto countsImpl = libLoader.getSymbol<countsImpl_t>("counts");
         std::vector<size_t> results;
 
-        std::cout << circuit.c_str() << std::endl;
+
         countsImpl(circuit.c_str(), 
                    device.c_str(), 
                    shots, 
                    kwargs.c_str(),
-                   &results);
+                   reinterpret_cast<void*>(&results));
         return results;
     }
 };

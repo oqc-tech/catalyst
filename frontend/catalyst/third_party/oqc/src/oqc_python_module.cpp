@@ -24,7 +24,7 @@ extern "C" void counts(const char*, const char*, unsigned long, unsigned long, c
 std::string program = R"(
 import os
 from qcaas_client.client import OQCClient, QPUTask, CompilerConfig
-from qcaas_client.config import QuantumResultsFormat, Tket, TketOptimizations, MetricsType
+from qcaas_client.compiler_config import QuantumResultsFormat, Tket, TketOptimizations, MetricsType
 optimisations = Tket()
 optimisations.tket_optimizations = TketOptimizations.DefaultMappingPass
 
@@ -34,9 +34,6 @@ try:
     auth_token = os.environ.get("OQC_AUTH_TOKEN")
     device = os.environ.get("OQC_DEVICE")
     url = os.environ.get("OQC_URL")
-    #client = OQCClient(url=url, email=email, password=password)
-    #client.authenticate()
-    print(url)
     client = OQCClient(url=url, authentication_token=auth_token)
     oqc_config = CompilerConfig(repeats=shots, 
                                 repetition_period = 90e-6,
@@ -44,10 +41,9 @@ try:
                                 metrics = MetricsType.OptimizedInstructionCount,
                                 optimizations=optimisations)
     oqc_task = QPUTask(program=circuit, config=oqc_config)
-    task_id = client.schedule_tasks(task,qpu_id=device)[0].task_id
-    #res = client.execute_tasks(oqc_task)
+    task_id = client.schedule_tasks(oqc_task,qpu_id=device)[0].task_id
     res = client.get_task_results(task_id,qpu_id=device)
-    counts = res[0].result["cbits"]
+    counts = res.result["cbits"]
 
 except Exception as e:
     print(f"circuit: {circuit}")
@@ -66,9 +62,6 @@ except Exception as e:
 
     py::gil_scoped_acquire lock;
 
-    std::cout << "kushida debug 01" << std::endl;
-    std::cout << _circuit << std::endl;
-
     auto locals = py::dict("circuit"_a = _circuit, 
                            "device"_a = _device, 
                            "kwargs"_a = _kwargs,
@@ -82,12 +75,14 @@ except Exception as e:
 
     py::dict results = locals["counts"];
 
-    std::vector<size_t> *counts_value = reinterpret_cast<std::vector<size_t> *>(_vector);
+    //std::vector<size_t> *counts_value = reinterpret_cast<std::vector<size_t> *>(_vector);
+    std::vector<size_t> counts_value;
     for (auto item : results) {
         auto key = item.first;
         auto value = item.second;
-        counts_value->push_back(value.cast<size_t>());
+        counts_value.push_back(value.cast<size_t>());
     }
+    std::cout << "kushida debug 02" << std::endl;
     return;
 }
 
