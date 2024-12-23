@@ -117,7 +117,7 @@ struct OQCRunner : public OQCRunnerBase {
         DynamicLibraryLoader libLoader(OQC_PY);
 
         using countsImpl_t =
-                           void (*)(const char *, 
+                           size_t* (*)(const char *, 
                                     const char *, 
                                     size_t, 
                                     const char *,
@@ -127,11 +127,15 @@ struct OQCRunner : public OQCRunnerBase {
         std::vector<size_t> results;
 
 
-        countsImpl(circuit.c_str(), 
+        size_t *cont_vec = countsImpl(circuit.c_str(), 
                    device.c_str(), 
                    shots, 
                    kwargs.c_str(),
                    reinterpret_cast<void*>(&results));
+        results.resize(cont_vec[0]);
+        for(size_t i=0;i<cont_vec[0];i++){
+            results[i] = cont_vec[i+1];
+        }
         return results;
     }
 };

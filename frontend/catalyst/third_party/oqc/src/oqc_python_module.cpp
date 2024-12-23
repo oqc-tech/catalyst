@@ -19,7 +19,7 @@
 
 #include "Exception.hpp"
 
-extern "C" void counts(const char*, const char*, unsigned long, unsigned long, const char*, void*);
+extern "C" size_t* counts(const char*, const char*, unsigned long, unsigned long, const char*, void*);
 
 std::string program = R"(
 import os
@@ -50,7 +50,7 @@ except Exception as e:
     msg = str(e)
 )";
 
-[[gnu::visibility("default")]] void counts(const char *_circuit, 
+[[gnu::visibility("default")]] size_t* counts(const char *_circuit, 
                                            const char *_device, 
                                            size_t shots,
                                            size_t num_qubits, 
@@ -75,15 +75,18 @@ except Exception as e:
 
     py::dict results = locals["counts"];
 
-    //std::vector<size_t> *counts_value = reinterpret_cast<std::vector<size_t> *>(_vector);
-    std::vector<size_t> counts_value;
+
+    size_t *cont_vec=(size_t*)malloc(sizeof(size_t)*(results.size()+1));
+    size_t counter = 1;
     for (auto item : results) {
         auto key = item.first;
         auto value = item.second;
-        counts_value.push_back(value.cast<size_t>());
+        //counts_value.push_back(value.cast<size_t>());
+        cont_vec[counter] = value.cast<size_t>();
+        counter++;
     }
-    std::cout << "kushida debug 02" << std::endl;
-    return;
+    cont_vec[0] = results.size();
+    return cont_vec;
 }
 
 PYBIND11_MODULE(oqc_python_module, m) {
