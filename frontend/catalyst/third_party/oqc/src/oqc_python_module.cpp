@@ -14,45 +14,60 @@
 
 #include <pybind11/eval.h>
 #include <pybind11/pybind11.h>
+#include <pybind11/stl.h> 
 #include <string>
 
 #include "Exception.hpp"
 
+extern "C" size_t* counts(const char*,const char*,unsigned long,unsigned long,const char*);
+
 std::string program = R"(
 import os
 from qcaas_client.client import OQCClient, QPUTask, CompilerConfig
-from qcaas_client.config import QuantumResultsFormat, Tket, TketOptimizations
-optimisations = Tket()
-optimisations.tket_optimizations = TketOptimizations.DefaultMappingPass
+from qcaas_client.compiler_config import QuantumResultsFormat, Tket, TketOptimizations, MetricsType
+#optimisations.tket_optimizations = TketOptimizations.DefaultMappingPass
+#optimisations = Tket()
+optimisations = Tket(TketOptimizations.One)
+#optimisations = Tket(TketOptimizations.Two)
 
 RES_FORMAT = QuantumResultsFormat().binary_count()
 
 try:
-    email = os.environ.get("OQC_EMAIL")
-    password = os.environ.get("OQC_PASSWORD")
+    auth_token = os.environ.get("OQC_AUTH_TOKEN")
+    device = os.environ.get("OQC_DEVICE")
     url = os.environ.get("OQC_URL")
-    client = OQCClient(url=url, email=email, password=password)
-    client.authenticate()
-    oqc_config = CompilerConfig(repeats=shots, results_format=RES_FORMAT, optimizations=optimisations)
-    oqc_task = QPUTask(circuit, oqc_config)
-    res = client.execute_tasks(oqc_task)
-    counts = res[0].result["cbits"]
+    client = OQCClient(url=url, authentication_token=auth_token)
+    oqc_config = CompilerConfig(repeats=shots, 
+                                repetition_period = 90e-6,
+                                results_format=RES_FORMAT, 
+                                metrics = MetricsType.OptimizedInstructionCount,
+                                optimizations=optimisations)
+    oqc_task = QPUTask(program=circuit, config=oqc_config)
+    task_id = client.schedule_tasks(oqc_task,qpu_id=device)[0].task_id
+    res = client.get_task_results(task_id,qpu_id=device)
+    counts = res.result["cbits"]
 
 except Exception as e:
     print(f"circuit: {circuit}")
     msg = str(e)
 )";
 
-[[gnu::visibility("default")]] void counts(const char *_circuit, const char *_device, size_t shots,
-                                           size_t num_qubits, const char *_kwargs, void *_vector)
+[[gnu::visibility("default")]] size_t* counts(const char *_circuit, 
+                                           const char *_device, 
+                                           size_t shots,
+                                           size_t num_qubits, 
+                                           const char *_kwargs)
 {
     namespace py = pybind11;
     using namespace py::literals;
 
     py::gil_scoped_acquire lock;
 
-    auto locals = py::dict("circuit"_a = _circuit, "device"_a = _device, "kwargs"_a = _kwargs,
-                           "shots"_a = shots, "msg"_a = "");
+    auto locals = py::dict("circuit"_a = _circuit, 
+                           "device"_a = _device, 
+                           "kwargs"_a = _kwargs,
+                           "shots"_a = shots, 
+                           "msg"_a = "");
 
     py::exec(program, py::globals(), locals);
 
@@ -61,13 +76,27 @@ except Exception as e:
 
     py::dict results = locals["counts"];
 
-    std::vector<size_t> *counts_value = reinterpret_cast<std::vector<size_t> *>(_vector);
+
+    size_t *cont_vec=(size_t*)malloc(sizeof(size_t)*(1<<num_qubits));
+    for(size_t i=0;i<(1<<num_qubits);i++){
+        cont_vec[i] = 0;
+    }
     for (auto item : results) {
         auto key = item.first;
         auto value = item.second;
-        counts_value->push_back(value.cast<size_t>());
+        size_t idx = std::stoi(key.cast<std::string>(),nullptr,2);
+        cont_vec[idx] = value.cast<size_t>();
     }
-    return;
+    return cont_vec;
 }
 
-PYBIND11_MODULE(oqc_python_module, m) { m.doc() = "oqc"; }
+PYBIND11_MODULE(oqc_python_module, m) {
+    m.doc() = "oqc";  // Module documentation
+    m.def("counts", &counts,
+          "Execute an OQC task and retrieve counts",
+          pybind11::arg("_circuit"), 
+          pybind11::arg("_device"), 
+          pybind11::arg("shots"),
+          pybind11::arg("num_qubits"), 
+          pybind11::arg("_kwargs"));
+}
