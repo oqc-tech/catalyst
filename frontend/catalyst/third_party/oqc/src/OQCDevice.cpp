@@ -96,10 +96,9 @@ void OQCDevice::PartialCounts(DataView<double, 1> &eigvals,
 
     auto &&results = runner->Counts(builder->toOpenQASM2(), "", shots, GetNumQubits());
 
-    int i = 0;
-    for (auto r : results) {
-        counts(i) = r;
-        i++;
+    size_t num_vec_elem = 1 << GetNumQubits();
+    for(size_t i = 0; i < num_vec_elem; i++){
+        counts(i) = results[i];
     }
 }
 

@@ -76,16 +76,13 @@ except Exception as e:
     py::dict results = locals["counts"];
 
 
-    size_t *cont_vec=(size_t*)malloc(sizeof(size_t)*(results.size()+1));
-    size_t counter = 1;
+    size_t *cont_vec=(size_t*)malloc(sizeof(size_t)*(1<<num_qubits));
     for (auto item : results) {
         auto key = item.first;
         auto value = item.second;
-        //counts_value.push_back(value.cast<size_t>());
-        cont_vec[counter] = value.cast<size_t>();
-        counter++;
+        size_t idx = std::stoi(key.cast<std::string>(),nullptr,2);
+        cont_vec[idx] = value.cast<size_t>();
     }
-    cont_vec[0] = results.size();
     return cont_vec;
 }
 

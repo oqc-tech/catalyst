@@ -132,10 +132,11 @@ struct OQCRunner : public OQCRunnerBase {
                    shots, 
                    kwargs.c_str(),
                    reinterpret_cast<void*>(&results));
-        results.resize(cont_vec[0]);
-        for(size_t i=0;i<cont_vec[0];i++){
-            results[i] = cont_vec[i+1];
+        results.resize(1<<num_qubits);
+        for(size_t i=0;i< (1<<num_qubits) ;i++){
+            results[i] = cont_vec[i];
         }
+        free(cont_vec);
         return results;
     }
 };
