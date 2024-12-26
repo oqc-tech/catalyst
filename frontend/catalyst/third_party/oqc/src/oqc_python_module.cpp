@@ -25,8 +25,10 @@ std::string program = R"(
 import os
 from qcaas_client.client import OQCClient, QPUTask, CompilerConfig
 from qcaas_client.compiler_config import QuantumResultsFormat, Tket, TketOptimizations, MetricsType
-optimisations = Tket()
-optimisations.tket_optimizations = TketOptimizations.DefaultMappingPass
+#optimisations.tket_optimizations = TketOptimizations.DefaultMappingPass
+#optimisations = Tket()
+optimisations = Tket(TketOptimizations.One)
+#optimisations = Tket(TketOptimizations.Two)
 
 RES_FORMAT = QuantumResultsFormat().binary_count()
 
