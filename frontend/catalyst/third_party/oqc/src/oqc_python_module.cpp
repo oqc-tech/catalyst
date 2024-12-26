@@ -19,7 +19,7 @@
 
 #include "Exception.hpp"
 
-extern "C" size_t* counts(const char*, const char*, unsigned long, unsigned long, const char*, void*);
+extern "C" size_t* counts(const char*,const char*,unsigned long,unsigned long,const char*);
 
 std::string program = R"(
 import os
@@ -54,8 +54,7 @@ except Exception as e:
                                            const char *_device, 
                                            size_t shots,
                                            size_t num_qubits, 
-                                           const char *_kwargs, 
-                                           void *_vector)
+                                           const char *_kwargs)
 {
     namespace py = pybind11;
     using namespace py::literals;
@@ -77,6 +76,9 @@ except Exception as e:
 
 
     size_t *cont_vec=(size_t*)malloc(sizeof(size_t)*(1<<num_qubits));
+    for(size_t i=0;i<(1<<num_qubits);i++){
+        cont_vec[i] = 0;
+    }
     for (auto item : results) {
         auto key = item.first;
         auto value = item.second;
@@ -94,6 +96,5 @@ PYBIND11_MODULE(oqc_python_module, m) {
           pybind11::arg("_device"), 
           pybind11::arg("shots"),
           pybind11::arg("num_qubits"), 
-          pybind11::arg("_kwargs"), 
-          pybind11::arg("_vector"));
+          pybind11::arg("_kwargs"));
 }

@@ -118,20 +118,19 @@ struct OQCRunner : public OQCRunnerBase {
 
         using countsImpl_t =
                            size_t* (*)(const char *, 
-                                    const char *, 
-                                    size_t, 
-                                    const char *,
-                                    void *);
-                                    //std::vector<size_t> *);
+                                       const char *, 
+                                       size_t, 
+                                       size_t, 
+                                       const char *);
         auto countsImpl = libLoader.getSymbol<countsImpl_t>("counts");
         std::vector<size_t> results;
 
 
         size_t *cont_vec = countsImpl(circuit.c_str(), 
-                   device.c_str(), 
-                   shots, 
-                   kwargs.c_str(),
-                   reinterpret_cast<void*>(&results));
+                                      device.c_str(), 
+                                      shots, 
+                                      num_qubits, 
+                                      kwargs.c_str());
         results.resize(1<<num_qubits);
         for(size_t i=0;i< (1<<num_qubits) ;i++){
             results[i] = cont_vec[i];
